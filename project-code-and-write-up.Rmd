@@ -1,0 +1,747 @@
+---
+title: "A Loop Through Time"
+author: "By Rhett Pimentel, Hattie Pimentel, Jonathan Zaremba, and Hunter Kuchek"
+header-includes:
+  - /usepackage{rvest}
+  - /usepackage{rlist}
+date: "12/10/2018"
+output: html_document
+---
+## The Hypothesis
+If the most frequent words from newspaper headlines are analyzed, viewers will be able to glean notable events and entities from the past. The goal will be to create an interactive app that displays the most frequently mentioned words for each year. Imagine a crash course of history using just twenty-five words per year.
+
+## The Code
+
+### Part 1: Data Aquisition
+In this part of the code, we focus on data acquisition.  In order to analyze the headlines from the NYT, we scrape the data from their archives using a web scraping function that we created. 
+
+#### Setup
+We use the rvest package for html/webscraping and the rlist package to append our datasets. 
+```{r message=FALSE, eval=FALSE}
+#install.packages("rvest") # This was necessary to install for the html/web scraping https://blog.rstudio.com/2014/11/24/rvest-easy-web-scraping-with-r/
+#install.packages("rlist") # This was used while appending the datasets https://www.rdocumentation.org/packages/rlist/versions/0.4.6.1/topics/list.append
+library(rvest)
+library(rlist)
+```
+
+This vector contains every possible css code that could be used to scrape the data from the website.
+These consist of 2-3 "terms" that describe whether it is in the first or second half of the year, which month it is, and which "part" it is. The link below is helpful in understanding the distinction described above.
+
+<https://spiderbites.nytimes.com/1960/> 
+
+```{r, eval=FALSE}
+parts <- c("#mainContent :nth-child(3) :nth-child(1) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(1) a",
+           "#mainContent :nth-child(3) :nth-child(2) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(2) a",
+           "#mainContent :nth-child(3) :nth-child(3) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(3) a",
+           "#mainContent :nth-child(3) :nth-child(4) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(4) a",
+           "#mainContent :nth-child(3) :nth-child(5) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(5) a",
+           "#mainContent :nth-child(3) :nth-child(6) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(6) a",
+           "#mainContent :nth-child(3) :nth-child(7) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(7) a",
+           "#mainContent :nth-child(3) :nth-child(8) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(8) a",
+           
+           "#mainContent :nth-child(3) :nth-child(1) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(1) a",
+           "#mainContent :nth-child(3) :nth-child(2) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(2) a",
+           "#mainContent :nth-child(3) :nth-child(3) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(3) a",
+           "#mainContent :nth-child(3) :nth-child(4) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(4) a",
+           "#mainContent :nth-child(3) :nth-child(5) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(5) a",
+           "#mainContent :nth-child(3) :nth-child(6) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(6) a",
+           "#mainContent :nth-child(3) :nth-child(7) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(7) a",
+           "#mainContent :nth-child(3) :nth-child(8) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(8) a",
+           
+           "#mainContent :nth-child(3) :nth-child(1) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(1) a",
+           "#mainContent :nth-child(3) :nth-child(2) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(2) a",
+           "#mainContent :nth-child(3) :nth-child(3) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(3) a",
+           "#mainContent :nth-child(3) :nth-child(4) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(4) a",
+           "#mainContent :nth-child(3) :nth-child(5) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(5) a",
+           "#mainContent :nth-child(3) :nth-child(6) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(6) a",
+           "#mainContent :nth-child(3) :nth-child(7) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(7) a",
+           "#mainContent :nth-child(3) :nth-child(8) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(8) a",
+          
+           "#mainContent :nth-child(3) :nth-child(1) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(1) a",
+           "#mainContent :nth-child(3) :nth-child(2) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(2) a",
+           "#mainContent :nth-child(3) :nth-child(3) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(3) a",
+           "#mainContent :nth-child(3) :nth-child(4) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(4) a",
+           "#mainContent :nth-child(3) :nth-child(5) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(5) a",
+           "#mainContent :nth-child(3) :nth-child(6) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(6) a",
+           "#mainContent :nth-child(3) :nth-child(7) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(7) a",
+           "#mainContent :nth-child(3) :nth-child(8) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(8) a",
+           
+           "#mainContent :nth-child(3) :nth-child(1) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(1) a",
+           "#mainContent :nth-child(3) :nth-child(2) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(2) a",
+           "#mainContent :nth-child(3) :nth-child(3) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(3) a",
+           "#mainContent :nth-child(3) :nth-child(4) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(4) a",
+           "#mainContent :nth-child(3) :nth-child(5) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(5) a",
+           "#mainContent :nth-child(3) :nth-child(6) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(6) a",
+           "#mainContent :nth-child(3) :nth-child(7) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(7) a",
+           "#mainContent :nth-child(3) :nth-child(8) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(8) a",
+           
+           "#mainContent :nth-child(3) :nth-child(1) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(1) a",
+           "#mainContent :nth-child(3) :nth-child(2) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(2) a",
+           "#mainContent :nth-child(3) :nth-child(3) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(3) a",
+           "#mainContent :nth-child(3) :nth-child(4) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(4) a",
+           "#mainContent :nth-child(3) :nth-child(5) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(5) a",
+           "#mainContent :nth-child(3) :nth-child(6) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(6) a",
+           "#mainContent :nth-child(3) :nth-child(7) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(7) a",
+           "#mainContent :nth-child(3) :nth-child(8) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(8) a",
+           
+           ####
+           
+           "#mainContent :nth-child(4) :nth-child(1) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(1) a",
+           "#mainContent :nth-child(4) :nth-child(2) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(2) a",
+           "#mainContent :nth-child(4) :nth-child(3) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(3) a",
+           "#mainContent :nth-child(4) :nth-child(4) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(4) a",
+           "#mainContent :nth-child(4) :nth-child(5) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(5) a",
+           "#mainContent :nth-child(4) :nth-child(6) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(6) a",
+           "#mainContent :nth-child(4) :nth-child(7) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(7) a",
+           "#mainContent :nth-child(4) :nth-child(8) li:nth-child(1) a",
+           "#mainContent :nth-child(1) li:nth-child(8) a",
+           
+           "#mainContent :nth-child(4) :nth-child(1) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(1) a",
+           "#mainContent :nth-child(4) :nth-child(2) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(2) a",
+           "#mainContent :nth-child(4) :nth-child(3) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(3) a",
+           "#mainContent :nth-child(4) :nth-child(4) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(4) a",
+           "#mainContent :nth-child(4) :nth-child(5) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(5) a",
+           "#mainContent :nth-child(4) :nth-child(6) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(6) a",
+           "#mainContent :nth-child(4) :nth-child(7) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(7) a",
+           "#mainContent :nth-child(4) :nth-child(8) li:nth-child(2) a",
+           "#mainContent :nth-child(2) li:nth-child(8) a",
+           
+           "#mainContent :nth-child(4) :nth-child(1) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(1) a",
+           "#mainContent :nth-child(4) :nth-child(2) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(2) a",
+           "#mainContent :nth-child(4) :nth-child(3) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(3) a",
+           "#mainContent :nth-child(4) :nth-child(4) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(4) a",
+           "#mainContent :nth-child(4) :nth-child(5) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(5) a",
+           "#mainContent :nth-child(4) :nth-child(6) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(6) a",
+           "#mainContent :nth-child(4) :nth-child(7) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(7) a",
+           "#mainContent :nth-child(4) :nth-child(8) li:nth-child(3) a",
+           "#mainContent :nth-child(3) li:nth-child(8) a",
+           
+           "#mainContent :nth-child(4) :nth-child(1) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(1) a",
+           "#mainContent :nth-child(4) :nth-child(2) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(2) a",
+           "#mainContent :nth-child(4) :nth-child(3) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(3) a",
+           "#mainContent :nth-child(4) :nth-child(4) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(4) a",
+           "#mainContent :nth-child(4) :nth-child(5) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(5) a",
+           "#mainContent :nth-child(4) :nth-child(6) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(6) a",
+           "#mainContent :nth-child(4) :nth-child(7) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(7) a",
+           "#mainContent :nth-child(4) :nth-child(8) li:nth-child(4) a",
+           "#mainContent :nth-child(4) li:nth-child(8) a",
+           
+           "#mainContent :nth-child(4) :nth-child(1) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(1) a",
+           "#mainContent :nth-child(4) :nth-child(2) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(2) a",
+           "#mainContent :nth-child(4) :nth-child(3) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(3) a",
+           "#mainContent :nth-child(4) :nth-child(4) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(4) a",
+           "#mainContent :nth-child(4) :nth-child(5) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(5) a",
+           "#mainContent :nth-child(4) :nth-child(6) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(6) a",
+           "#mainContent :nth-child(4) :nth-child(7) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(7) a",
+           "#mainContent :nth-child(4) :nth-child(8) li:nth-child(5) a",
+           "#mainContent :nth-child(5) li:nth-child(8) a",
+           
+           "#mainContent :nth-child(4) :nth-child(1) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(1) a",
+           "#mainContent :nth-child(4) :nth-child(2) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(2) a",
+           "#mainContent :nth-child(4) :nth-child(3) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(3) a",
+           "#mainContent :nth-child(4) :nth-child(4) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(4) a",
+           "#mainContent :nth-child(4) :nth-child(5) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(5) a",
+           "#mainContent :nth-child(4) :nth-child(6) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(6) a",
+           "#mainContent :nth-child(4) :nth-child(7) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(7) a",
+           "#mainContent :nth-child(4) :nth-child(8) li:nth-child(6) a",
+           "#mainContent :nth-child(6) li:nth-child(8) a"
+)
+
+```
+This creates a blank dataframe for us to append all of the New York Times headlines that we gather between 1851 and 2018.
+```{r}
+dftotal <- data.frame("Year"=0,"Headlines"=0)
+```
+
+#### Data Acquisition Function
+This is our function taking year (or years) as an input.
+
+```{r, eval=FALSE}
+scraper <- function(year) {
+  # This loops through the years entered (we generally run a decade at a time)
+  for(i in year){
+  # Creates a blank vector to fill with data
+  base <- vector()
+  # This loops through everything in the "parts" list
+  for(j in parts){
+    # "Tries" each possibility without throwing up an error sign if unsuccessful
+    result = tryCatch({
+    #Navigate to archieve home
+    session <- html_session("https://spiderbites.nytimes.com/")
+    # follows specific year
+    session <- session %>% follow_link(i) %>%
+      # chooses which part/month to view
+      follow_link(css = j)
+    # Scrapes the headlines from this page
+    nyttitlesadd <- session %>%
+      html_nodes("#headlines a") %>%
+      html_text()
+    # Adds the scraped data to the base
+    base <- list.append(base,list = nyttitlesadd)
+    # "Back" in the internet 
+    session <- session %>% back()
+    
+  }, warning = function(w) {
+    #warning-handler-code
+  }, error = function(e) {
+    # error-handler-code
+  }, finally = {
+    #cleanup-code
+    
+  })
+
+  }
+
+  # Once data for the entire year is collected and appended in "base" it is then added to the main dataframe
+  dfadd <- data.frame("Year"=i,"Headlines" =base) 
+  dftotal <- rbind(dftotal, dfadd)
+   
+  }
+ 
+  return(dftotal)
+}
+```
+
+#### Running the scraper function.
+yearange is a vector is that contains the range of years we would like to scrape headlines for. The as.character function converts the range of years to characters which is the necessary format in the html session.
+
+```{r message=FALSE, eval=FALSE}
+# converts range of years to character 
+yearrange <- as.character(1900) # change to 1940:1949 when we turn in
+
+# Running the data acquisition function
+completeHeadlinesDataframe <- scraper(yearrange)
+
+head(completeHeadlinesDataframe)
+```
+
+To conclude Part 1, we save the dataframe for analysis. This is quite a large file and contains approximately 500 million headlines. The function took over 3 hours to scrape headlines from 1851 to 2017.
+
+
+### Part 2: Data Analysis
+This part of the code takes in the dataframe generated by the scraping function. It then uses several libraries to tag the words in the headlines with their type. Finally, the code outputs a much smaller dataframe containing the most frequent words of each type corresponding to each year.
+
+#### Setup
+Several libraries are needed for this part of the code. Notably, the NLP (Natural Language Processing) and openNLP libraries take care of word tagging.
+```{r message=FALSE, eval=FALSE}
+  library(rJava) # openNLP requires Java
+  library(NLP)
+  library(openNLP)
+  library(magrittr)
+  library(tidyverse)
+  library(openNLPmodels.en) 
+  library(RWeka)
+  library(qdap)
+```
+
+Annotators also need to be generated for the word tagging functions. Annotators are objects that correspond to the type that they are tagging. For example, there is a "person" annotator.
+```{r message=FALSE, eval=FALSE}
+# Create entity annotators
+  sentence_token_annotator <- Maxent_Sent_Token_Annotator()
+  word_token_annotator <- Maxent_Word_Token_Annotator()
+  pos_tag_annotator <- Maxent_POS_Tag_Annotator() 
+  person <- Maxent_Entity_Annotator(kind = "person") # people
+  location <- Maxent_Entity_Annotator(kind = "location") # location
+  organization <- Maxent_Entity_Annotator(kind = "organization") # organizations (ex.- Google, Costco)
+  #date <- Maxent_Entity_Annotator(kind = "date") # dates
+  
+  # Compile annotators into a list for easy transfer
+  pipeline <- list("sentence_token_annotator" = sentence_token_annotator,
+                   "word_token_annotator" = word_token_annotator,
+                   "person" = person,
+                   "location" = location,
+                   "organization" = organization,
+                   "pos_tag_annotator" = pos_tag_annotator) 
+  
+```
+A blank template dataframe is also created; this will hold the outputted data.
+```{r message=FALSE, eval=FALSE}
+  # Create the dataframe that will store all of the generated information
+  analyzedDataframe <- data.frame("selectedWords" = NULL, "Freq" = NULL, "publish_date" = NULL, "type" = NULL)
+```
+
+#### Word Analysis Function
+This function takes a number of parameters that describe how the data will be analyzed. The function outputs a dataframe containging the most frequent words of the specified type from the specified years.
+```{r message=FALSE, eval=FALSE}
+  analyzeWords <- function(dataframe_name, headline_date_range, sort_by_types, doingPOS, output_word_count) {
+  
+  # Read in the data frame
+  headlinesDF <- dataframe_name
+  
+  # Select the headlines that correspond to the desired dates
+  selectedHeadlines <- headlinesDF$headline_text[headlinesDF$publish_date %in% headline_date_range]
+  
+  # Count how many entries in selectedHeadlines
+  headlineCount <- NROW(selectedHeadlines)
+  
+  # Find 12000 random integer #'s in the range 1 and # of entries
+  # If we tried to do all of the headlines, the program would be too big too run
+  selectingNums <- seq(from = 1, to = headlineCount, by = round(headlineCount/12000))
+  
+  # Subset the headlines where the random #'s equals the headlines
+  selectedHeadlines <- selectedHeadlines[selectingNums]
+  
+  # Cast the headline as a string datatype
+  headline <- as.String(selectedHeadlines)
+  
+  # Progress report
+  print("I have reached line 50") 
+  
+  # Create a variable to store the words that will be selected
+  selectedWords <- vector()
+  
+  # Compile annotators that are requested in the function parameters
+  # We only do the required annotators to minimize computing time
+  pipeline <- list(sentence_token_annotator, 
+                   word_token_annotator,
+                  if(doingPOS){
+                    pipeline[["pos_tag_annotator"]]
+                   } else{
+                    pipeline[[sort_by_types]]
+                  }
+                   )
+  
+  # Apply annotations
+  text_annotations <- NLP::annotate(headline, pipeline) 
+  
+  # Progress report
+  print("I have completed annotating")
+  
+  # Create an AnnotatedPlainTextDocument 
+  text_doc <- AnnotatedPlainTextDocument(headline, text_annotations) 
+    
+  # If there is an input argument for types to sort by
+  if(hasArg(sort_by_types)) { 
+    k <- sapply(text_annotations$features, '[[', "kind") # Make the word tags accessible
+    b <- sapply(text_annotations$features, '[[', "POS") # Make the word tags accessible
+    identifiers <- text_doc$content[text_annotations[k %in% sort_by_types]] # Subset the word/phrases matching the identifier kinds
+    POS <- text_doc$content[text_annotations[b %in% sort_by_types]] # Subset the word/phrases matching the parts of speech (POS) kinds
+    selectedWords <- append(selectedWords, c(identifiers, POS)) # Add the new words to the selectedWords variable
+    #selectedWords <- append(selectedWords, c(identifiers)) # Add the new words to the selectedWords variable
+  } else { # If there aren't input arguments for "kind" or "POS"
+    selectedWords <- append(selectedWords, text_doc$content[text_annotations[text_annotations$type == 'entity']])
+  }
+  
+  # Progress report
+  print("I have extracted the words (line 86)")
+  
+  # Arrange the selectedWords in order of frequency 
+  selectedWords <- sort(table(selectedWords), decreasing = TRUE)
+  
+  # Select the most frequent words
+  selectedWords <- selectedWords[1:output_word_count]
+  
+  # Convert to a data frame
+  selectedWords <- data.frame(selectedWords)
+  
+  # Add a couple of important columns
+  selectedWords$publish_date <- headline_date_range
+  selectedWords$type <- sort_by_types
+  
+  # Progress report
+  print("I am about to return the selectedWords")
+  
+  # Return the dataframe
+  return(selectedWords)
+  
+} # end analyzeWords function
+```
+
+#### Calling the Function
+A for loop is used to iterate through every year in the dataset. For each year, the 25 most frequent person names, location words, and organization names are extracted and put into a dataframe. The word entity analysis and tagging functions are quite large and take a lot of computing power. We ran this loop via a remote connetion to an MSU engineering computer. It took 24 hours, averaging about 7 minutes per year!
+```{r message=FALSE, eval=FALSE}
+for(year in c(1851:2017)){
+    
+    # Status update
+    print(year)
+    
+    # Get the top 25 person names for the current year
+    newRows <- analyzeWords(completeHeadlinesDataframe, year, "person", FALSE, 25)
+    # Status update
+    print("I am about to bind the person")
+    # Append the new words to the master output dataframe
+    analyzedDataframe <- rbind(analyzedDataframe, newRows)
+    
+    # Get the top 25 location related words for the current year
+    newRows <- analyzeWords(completeHeadlinesDataframe, year, "location", FALSE, 25)
+    # Status update
+    print("I am about to bind the location")
+    # Append the new words to the master output dataframe
+    analyzedDataframe <- rbind(analyzedDataframe, newRows)
+    
+    # Get the top 25 organization names for the current year
+    newRows <- analyzeWords(completeHeadlinesDataframe, year, "organization", FALSE, 25)
+    # Status update
+    print("I am about to bind the organization")
+    # Append the new words to the master output dataframe
+    analyzedDataframe <- rbind(analyzedDataframe, newRows)
+  }
+```
+Finally, the dataframe containing the most frequent words is saved for use in the geocoding script and the Shiny App.
+```{r message=FALSE, eval=FALSE}
+save(analyzedDataframe,file="analyzedDataframe.Rda")
+```
+---
+title: "FinalMarkdownDoc"
+author: "Hattie Pimentel"
+date: "December 11, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+####Geocoding the Location Data
+After we had a dataset of people, places, and locations, we found the latitude and longitude of the locations. Taking a string, like "Houston, Texas," and turning it into a latitude and longitude is a process called geocoding. We needed to geocode the location so we could later map it in the Shiny App. We used the Google Maps Geocoding API for this purpose. 
+
+*The Google Geocoding API only allows a user 2,500 queries per day without a paid subscription. For this reason, we ran 2,400 queries one day and the remaining 1,700 the next. We then bound the two dataframes together. For readability, the code will be explained as if we could have run all of the queries at the same time, but the process is the same.*
+
+The development version of the ggmap library was used for the geocode command. Other libraries used in this script were tidyverse and googleway. We registered our API key so we could access Google's geocoding API, and loaded the dataset containing the words. 
+```{r eval = FALSE}
+#load libraries
+library(ggmap)
+library(googleway)
+library(tidyverse)
+
+#register Google geocoding api key
+register_google(key = [Redacted])
+
+#load the dataset
+load([Path Redacted])
+
+```
+Next, we subset the master dataframe by the type of words. Location, people, and organizations were divided into different dataframes. 
+```{r eval = FALSE}
+#divide the dataframe into 3 parts: people, location, and organizations
+peopleFrame <- analyzedDataframe %>% filter(type == "person") 
+organizationFrame <- analyzedDataframe %>% filter(type == "organization") 
+locationFrame <- analyzedDataframe %>% filter(type == "location") 
+```
+Since we wanted to bind the dataframes together at the end of the process, we created empty columns titled "lon"" and "lat"" on the people and organization dataframes. These columns were filled with NAs. This made it easier to bind the dataframes because their strutures matched.
+```{r eval = FALSE}
+#create empty  lon/lat columns for people.
+#this is so the peopleFrame and locationFrame can be bound together later
+peopleFrame$lon <- NA
+peopleFrame$lat <- NA
+
+#create empty lon/lat colunms for organizations
+organizationFrame$lon <- NA
+organizationFrame$lat <- NA
+```
+Finally, we geocoded the location dataframe. For some reason, the mutate_geocode command fails if the stringsAsFactors property of the geocoded dataframe isn't explicitly set to false, hence the first line of code. The mutate_geocode command automatically adds a "lon" and "lat" column to the dataframe with the corresponding numbers. When a location string wasn't applicable, the mutate_geocode command returns NAs. After running the mutate_geocode command, which took about ten minutes, the newly modified location dataframe was bound to the people and organization dataframes. Lastly, the new master dataframe was saved.
+```{r eval = FALSE}
+#the mutate_geocode command only works when "stringsAsFactors" is explicitly false, 
+#so set it explictly false
+locationFrame <- data.frame(selectedWords = as.character(locationFrame$selectedWords), 
+                            Freq = locationFrame$Freq, 
+                            publish_date = locationFrame$publish_date,
+                            type= locationFrame$type,
+                            stringsAsFactors = FALSE)
+
+#add on the lat/lon values corresponding to the location
+locationFrame <- mutate_geocode(locationFrame, selectedWords)
+
+#bind the location with the people and organizations 
+analyzedDataframe2 <- rbind(locationFrame,peopleFrame, organizationFrame)
+
+#save the dataframe
+save(analyzedDataframe2,file="analyzedDataFrameHead.Rda")
+```
+###The Shiny App
+The Shiny App displays a bubble chart or a map depending on the user's input. The Shiny App depends on the bubbles library and the leaflet library to created the bubble chart and map, respectively. Tidyverse and shiny are used for basic functions. ShinyWidgets was used to create toggle swiches, and maps is briefly used when generating the map. 
+```{r eval = FALSE}
+library(shiny)
+library(bubbles)
+library(tidyverse)
+library(shinyWidgets)
+library(maps)
+library(leaflet)
+```
+####The U.I.
+The app includes three toggle switches and a slider that cycles through the years between 1851 and 2017. The three toggle switches submit a value of true or false to the server page. We thought radio buttons were ugly, so we used the shinyWidgets library to create the toggle switches. 
+The slider submits a year to the server page. It's animated and automatically cycles through values. The side panel of the app also includes some explanatory headings. These elements are placed within the sidebar panel in the U.I. 
+```{r eval = FALSE}
+ #Use slider to select start date
+      sliderInput(inputId = "inputDate", label = h2("Year", style = "font-family: 'times'; font-si16pt"), 
+                  min=1851,
+                  max=2017,
+                  value= 1851, 
+                  step = 1, 
+                  animate = animationOptions(interval = 1500, loop = TRUE, playButton = NULL, pauseButton = NULL),
+                  ticks = TRUE,
+                  width = NULL, sep = ",", pre = NULL, post = NULL
+      ),#closes slider
+        
+      #include a title over the toggle switches
+      h2("Elements:", style = "font-family: 'times'; font-si16pt"),
+      
+      #Include a toggle switch the user can select to see people, location, or organizations
+      materialSwitch(inputId = "People", label = "People", status = "default", right = FALSE),
+      materialSwitch(inputId = "Location", label = "Location", status = "default", right = FALSE),
+      materialSwitch(inputId = "Organization", label = "Organization", status = "default", right = FALSE)
+      
+```
+The main panel of the app includes conditional panels. The conditional panels analyze the user's input and render the corresponding main panel when the conditions are correct. The app's three conditional panels render the bubble chart, the map, or a message for the user depending on which combination of toggle switches are flipped. When none of the switches are toggled, the conditional panel prints a message telling the user to select something. When only the location switch is toggled, a map is loaded. In all other circumstances, a bubble chart is rendered. 
+```{r eval = FALSE}
+ # when the user has selected only location
+      conditionalPanel(
+        condition = "!input.People & !input.Organization & input.Location",
+        
+        #display the map
+        leafletOutput("map", width = "100%", height = 800)
+      ),
+      
+      #if the user hasn't selected anything
+      conditionalPanel(
+        condition = "!input.People & !input.Organization & !input.Location & !input.About",
+        
+        #give them a message
+        h1("Please Select Something", style = "font-family: 'times'; font-si16pt")
+      ),
+      
+      #in all other circumstances 
+      conditionalPanel(
+        condition = "!(!input.People & !input.Organization & input.Location)&&!(!input.People & !input.Organization & !input.Location)",
+        
+        #show the bubble map
+        bubblesOutput("bubbleChart", width = "100%", height = 800)
+      )
+```
+####The Server Code
+The server code defines functions that are called by the U.I. in the main panel. The server code defines the functions that create the bubble charts and the maps. The server code also defines two functions that generate and edit data.
+
+#####Bubble Charts
+First, the server code includes the bubbleChart function. This function uses the bubbles package to create a colorful cloud of propotionally sized circles with the most common terms in headlines. The function calls the getWords function (detailed below). Since the getWords function is reactive to the user input, the bubble chart is re-rendered with changing user input.
+```{r eval = FALSE}
+
+  #gathers data and outputs a bubble chart
+  output$bubbleChart <- renderBubbles({ #the output bubble chart
+    
+    #call the data function from above
+    words <- getWords()
+    
+    #make a bubble chart
+    #the key is used to track each bubble so the bubbles slide around
+    bubbles(words$percentages, words$words, key=words$words, tooltip = words$tooltip, color = words$color)
+  })#close output bubbles
+```
+#####The Map
+The map function uses the Leaflet package to create a base world map. This function is run once when the user initially flips on the location toggle switch, and it isn't re-run while the toggle switch settings remain the same. This is important because it keeps the base map from re-loading with every adjustment of the slider. The function adjusts the map size so the whole globe is visible.
+```{r eval = FALSE}
+  #when only location is on, this will be called to render the world map once
+  output$map <- renderLeaflet({
+    
+    #get the map dataframe from the maps library
+    mapStates = map("world", fill = TRUE, plot = FALSE)
+   # leaflet(data = mapStates) %>% addTiles()# %>% setView(0,0,zoom=20)
+    m <- leaflet() %>% addTiles() %>% setView(0,0, zoom = 2)
+  })
+```
+The next portion of code is what adds the circles to the basic map rendered by the map function. Using "observe" makes the map update with every new year. The function gets data from the getWords function (detailed below). Using "leafletProxy" keeps the base map from getting over-written with every new year. The "clearShapes" function deletes circles from previous years. We struggled to get this bit of code working, which is why we ended up defining vectors to the value of the dataframe columns and using those vectors in the leafletProxy command.
+```{r eval = FALSE}
+  observe({
+    words <- getWords()
+    words <- words %>% filter((is.numeric(lat) && is.numeric(lon)))
+    
+    lo <- as.numeric(words$lon)
+    la <- as.numeric(words$lat)
+    ra <- as.numeric(words$Freq) * 100
+    po <- words$selectedWords
+    
+    leafletProxy("map", data = words) %>% addTiles() %>%
+      clearShapes() %>%
+      addCircles(lng = ~(lo), lat = ~(la), weight = 10
+     )
+  })
+```
+####The getWords Function
+The reactive getWords function considers the user's input and outputs the appropriate subset of the master dataframe. Since the function is reactive and depends on user input, it makes all of the code elements that call on it reactive as well.
+The function first retrieves the values of the three toggle switches and the slider. It finds the words that correspond to the slider's value, which is the year. It renames the columns for simplicity. The function also places all of the words into Capital Case (where only the first letter is capitalized). The function replaces the "type" column, which specifies whether a word is a place, location, or person, with a corresponding color hex code. Finally, the function uses the cleanAndSubset function, which is detailed below.
+```{r eval = FALSE}
+#Get variable inputs from UI
+    startDate <- input$inputDate #slider year
+    People <- input$People #show people
+    Location <- input$Location #add location
+    Organization <- input$Organization #add organizations
+    
+    #Get the words for the current year
+    wordsForYear <- analyzedDataframe2 %>% filter(publish_date == startDate)
+   
+    #Set the tooltip equal to the word (incase the bubble chart covers it up)
+    wordsForYear$tooltip <- paste(wordsForYear$selectedWords)
+    
+    #put words in capitalization case, and assign colors based on what kind of word it is (location, place, people)
+    wordsForYear <- wordsForYear %>% mutate(words = tools::toTitleCase(tolower((selectedWords))), percentages=Freq, tooltip = tooltip, 
+                            color = ifelse(type == "person","#EB7B59",
+                                             ifelse(type == "location","#028F76", "#E5DDCB"))) %>% 
+                                  select(words, percentages, tooltip, color, lat, lon)
+  
+    #clean up the words and subset by the kind of words the user wants to see
+    wordsForYear <- cleanAndSubset(wordsForYear, People, Location, Organization)
+    
+```
+####The cleanAndSubset Function
+The cleanAndSubset function code could have been included in the server code since it was called only once, but we created a function to make the server code more readable. The function cleans up the data and then subsets it by the user's input.
+To clean the data, the function removes a number of random words the text editor picked up. Among them are the name of the NY Times Sports Editor, words associated with newspapers, and "Music," which the text editor picked several times. The function also seeks to  remove irrelevant words by deleting words that start or end with common phrases. We found that a lot of junk words in the app ended with a period, so we removed those as well. We also removed phrases that contain four or more words, both because they clutter the bubble charts and because they were often nonsense. 
+```{r eval = FALSE}
+  #First, clean up the words a little
+  #Irrelevant words the annotator found
+  wordsToRemove <- c("The", "Paul Krugman", "Jo Nocera", "Music","In","Minor Crimes","Lives","Affadavit.","will","will be",
+                     "By Judge Barrett","He","Per","Cent","Per Cent","No","Shoots Himself","By","Bill Approved",
+                     "New","New Publications","The Times","Corrections","But","it", "An","His")
+  
+  #remove the irrelevant words
+  df1 <- df1[!(df1$words %in% wordsToRemove),]
+  
+  #Get rid of the newspaper phrases: "No Title..." and "Chronicle..." and "...News"
+  df1 <- df1[!(startsWith(df1$words, "No Title")),]
+  df1 <- df1[!(endsWith(df1$words, "News")),]
+  df1 <- df1[!(startsWith(df1$words, "Chronicle")),]
+  
+  #This helped keep some junk out, but it also deletes F.B.I., which is dissapointing
+  df1 <- df1[!(endsWith(df1$words, ".")),]
+  
+  #Delete long phrases (they're often nonsense, and they don't fit in the graph)
+  df1 <- df1[!(sapply(strsplit(df1$words, " "), length) >=4),]
+```
+Next, the cleanAndSubset code creates an empty dataframe with the same structure as the dataframe containing the word data. The function adds the corresponding words to the empty dataframe if the user has toggled the people, location, or organization options. This allows the user to create a custom query. The function sorts the entries by people, locations, and organizations using their matching colors. 
+```{r eval = FALSE}
+ #Now, subset the data by the user's toggle switch values
+  #Create an empty shopping-basket-dataframe to add rows to
+  df2 <- data.frame(words = NULL, percentages = NULL, tooltip = NULL, color = NULL, lon = NULL, lat = NULL)
+
+  #if the user wants to see people
+  if (People == TRUE) {
+    #add rows with the color that corresponds to names
+    df2 <- rbind(df2, df1[df1$color == "#EB7B59",])
+  } 
+  
+  #if the user wants to see locations
+  if (Location == TRUE) {
+    #add rows with the color corresponding to location
+    df2 <- rbind(df2, df1[df1$color == "#028F76",])
+  } 
+  
+ #if the user wants to see organizations
+  if (Organization == TRUE) {
+    #add rows with the color assigned to organizations
+    df2 <- rbind(df2, df1[df1$color == "#E5DDCB",])
+  } 
+  
+```
+After the cleanAndSubset function deletes irrelevant words and subsets the data by locations, people, and organizations, the function organizes the words by popularity. The purpose of this is so that when the bubble chart is rendered, the largest bubbles are in the middle. 
+To keep the bubble charts from feeling cluttered, the function returns thirty or fewer of the most popular terms. The function also returns a single entry that says "No Words" if there were no entries in the dataframe.
+```{r eval = FALSE}
+  #arrange the words by popularity, so the bubble chart looks nice
+  df2 <- df2 %>% arrange(desc(percentages))
+  
+  #Select 30 words at most
+  if (nrow(df2) > 30) {
+    df2 <- head(df2, 30)
+  } 
+  
+  #If there aren't any rows, inform the user
+  if (nrow(df2) == 0) {
+    df2 <- data.frame(words = c("No Words"), percentages = 4, tooltip = "No Words", color = "#E5DDCB", lat = NA, lon = NA)
+  }
+```
+###Conclusion
+Our project successfully scraped New York Times headlines, analyzed them for common phrases, and created corresponding maps and charts. We feel that we proved our hypothesis; sifting through headlines can provide an interesting summary of the terms that defined generations. We enjoyed running our app and spotting surprizing places, people, and locations. We were amused to find "Harry Potter" as one of the most mentioned people of the nineties, and we were interested to see how the presidents have come to dominate the "people" category. We learned that the New York Times is a proud cheerleader of the Mets, and realized we needed to do a quick Google search to recall who Henry Clay was. And that was the whole point. 
+
+
+
+
+
+
+
+
